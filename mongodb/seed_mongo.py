@@ -40,6 +40,7 @@ sys.path.insert(0, "/app")
 from pymongo import MongoClient, ASCENDING, DESCENDING, TEXT
 from pymongo.errors import OperationFailure
 
+from comum import conectar, parametros
 from gerador.liga_sudoers_gen import gerar_universo
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://sudoers:sudoers@mongodb:27017/?authSource=admin&directConnection=true")
@@ -52,15 +53,14 @@ def _dt(iso: str) -> datetime:
 
 
 def main() -> int:
-    u = gerar_universo(
-        semente=int(os.getenv("SEMENTE", 42)),
-        n_pessoas=int(os.getenv("N_PESSOAS", 500)),
-        n_produtos=int(os.getenv("N_PRODUTOS", 200)),
-        n_pedidos=int(os.getenv("N_PEDIDOS", 5000)),
-    )
+    u = gerar_universo(**parametros())
 
-    cli = MongoClient(MONGO_URI, serverSelectionTimeoutMS=15000)
-    cli.admin.command("ping")
+    def _abrir():
+        c = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+        c.admin.command("ping")
+        return c
+
+    cli = conectar("MongoDB", _abrir)
     db = cli[BANCO]
 
     print(f"conectado em {BANCO} | semente={u.semente}")

@@ -6,6 +6,7 @@
 
 ### 1) Preparação
 
+* [ ] Rodei `make verificar` e ele terminou com "Tudo certo. Pode subir."
 * [ ] Docker + Docker Compose v2 instalados (`docker compose version`)
 * [ ] ~6 GB de RAM livres (ou vou subir um profile por vez)
 * [ ] Portas livres: 27017, 8091, 6380, 7474, 7687, 9042, 8123, 9010, 8501
@@ -17,6 +18,7 @@
 * [ ] `make ajuda` lista os comandos
 * [ ] `docker compose run --rm seeder python gerador/liga_sudoers_gen.py --resumo` funciona
 * [ ] Entendi o que é a **semente** e por que ela precisa ser a mesma
+* [ ] Entendi que **não preciso editar o `.env`** para seguir a trilha
 * [ ] Provei o determinismo (gerei duas vezes e comparei)
 * [ ] Sei a diferença entre `dispositivo` (modelo) e `device_id` (aparelho)
 

@@ -37,6 +37,7 @@ sys.path.insert(0, "/app")
 
 import redis
 
+from comum import conectar, parametros
 from gerador.liga_sudoers_gen import gerar_universo
 
 HOST = os.getenv("REDIS_HOST", "redis")
@@ -47,16 +48,15 @@ MAX_ULTIMOS_PEDIDOS = 10
 
 
 def main() -> int:
-    u = gerar_universo(
-        semente=int(os.getenv("SEMENTE", 42)),
-        n_pessoas=int(os.getenv("N_PESSOAS", 500)),
-        n_produtos=int(os.getenv("N_PRODUTOS", 200)),
-        n_pedidos=int(os.getenv("N_PEDIDOS", 5000)),
-    )
+    u = gerar_universo(**parametros())
 
-    r = redis.Redis(host=HOST, password=SENHA, decode_responses=True,
-                    socket_timeout=15)
-    r.ping()
+    def _abrir():
+        c = redis.Redis(host=HOST, password=SENHA, decode_responses=True,
+                        socket_timeout=5)
+        c.ping()
+        return c
+
+    r = conectar("Redis", _abrir)
     print(f"conectado no Redis {HOST} | semente={u.semente}")
 
     r.flushdb()

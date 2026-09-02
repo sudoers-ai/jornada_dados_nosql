@@ -42,6 +42,7 @@ sys.path.insert(0, "/app")
 from cassandra.cluster import Cluster
 from cassandra.query import BatchStatement, BatchType, ConsistencyLevel
 
+from comum import conectar, parametros
 from gerador.liga_sudoers_gen import gerar_universo
 
 HOST = os.getenv("CASSANDRA_HOST", "cassandra")
@@ -65,15 +66,16 @@ def executar_schema(sessao, caminho: str) -> None:
 
 
 def main() -> int:
-    u = gerar_universo(
-        semente=int(os.getenv("SEMENTE", 42)),
-        n_pessoas=int(os.getenv("N_PESSOAS", 500)),
-        n_produtos=int(os.getenv("N_PRODUTOS", 200)),
-        n_pedidos=int(os.getenv("N_PEDIDOS", 5000)),
-    )
+    u = gerar_universo(**parametros())
 
-    cluster = Cluster([HOST], connect_timeout=30)
-    s = cluster.connect()
+    def _abrir():
+        c = Cluster([HOST], connect_timeout=10)
+        sessao = c.connect()
+        sessao.execute("SELECT now() FROM system.local")   # prova que aceita CQL
+        return sessao
+
+    s = conectar("Cassandra", _abrir)
+    cluster = s.cluster
     print(f"conectado no Cassandra {HOST} | semente={u.semente}")
 
     executar_schema(s, "/app/cassandra/schema.cql")

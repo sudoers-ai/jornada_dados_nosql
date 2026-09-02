@@ -19,6 +19,7 @@ $(shell [ -f .env ] || cp .env.example .env 2>/dev/null)
 
 .PHONY: ajuda tudo derruba limpar status logs ferramentas \
         documento chavevalor grafo widecolumn colunar viz bi bi-driver \
+        verificar consertar diagnostico \
         seed-mongo seed-redis seed-neo4j seed-cassandra seed-clickhouse seed \
         q-mongo q-redis q-neo4j q-cassandra q-clickhouse \
         lake-conectar lake-desconectar lake-oltp lake-export validar
@@ -47,7 +48,10 @@ viz:         ## sobe o painel Streamlit (http://localhost:8501)
 bi: bi-driver ## sobe o Metabase (http://localhost:3010)
 	$(DC) --profile bi up -d
 
-DRIVER_CH := 1.50.7   # compativel com metabase v0.50.x
+# Versao do driver ClickHouse do Metabase. Compativel com metabase v0.50.x.
+# ATENCAO: nada de comentario na MESMA linha do :=, porque o Make guarda os
+# espacos antes do "#" dentro do valor e a URL sai quebrada.
+DRIVER_CH := 1.50.7
 bi-driver:   ## baixa o driver ClickHouse do Metabase (nao vem na imagem)
 	@mkdir -p metabase/plugins
 	@# O Metabase roda com outro usuario dentro do container e precisa
@@ -60,16 +64,23 @@ bi-driver:   ## baixa o driver ClickHouse do Metabase (nao vem na imagem)
 	  echo "  driver ja existe (metabase/plugins/)"; \
 	else \
 	  echo "  baixando driver ClickHouse $(DRIVER_CH)..."; \
-	  curl -fsSL -o metabase/plugins/clickhouse.metabase-driver.jar \
-	    "https://github.com/ClickHouse/metabase-clickhouse-driver/releases/download/$(DRIVER_CH)/clickhouse.metabase-driver.jar" \
-	  && echo "  ✅ baixado" \
-	  || echo "  ⚠️  falhou (sem internet?). O Metabase sobe mesmo assim, so sem ClickHouse."; \
+	  if curl -fsSL -o metabase/plugins/clickhouse.metabase-driver.jar \
+	       "https://github.com/ClickHouse/metabase-clickhouse-driver/releases/download/$(DRIVER_CH)/clickhouse.metabase-driver.jar"; then \
+	    echo "  ✅ baixado ($$(du -h metabase/plugins/clickhouse.metabase-driver.jar | cut -f1))"; \
+	  else \
+	    rm -f metabase/plugins/clickhouse.metabase-driver.jar; \
+	    echo "  ⚠️  download falhou. O Metabase sobe mesmo assim, so sem ClickHouse."; \
+	    echo "     (o MongoDB continua funcionando: o driver dele ja vem na imagem)"; \
+	  fi; \
 	fi
 
 ferramentas: ## constroi a imagem com os drivers
 	$(DC) build seeder
 
-tudo: ferramentas ## sobe TUDO e popula os 5 bancos
+verificar:   ## confere Docker, portas e recursos ANTES de subir
+	@bash scripts/verificar.sh
+
+tudo: verificar ferramentas bi-driver ## sobe TUDO e popula os 5 bancos
 	$(DC) --profile tudo up -d
 	@echo "aguardando os bancos ficarem saudaveis..."
 	@bash scripts/esperar.sh
@@ -124,3 +135,14 @@ lake-export:      ## exporta os 5 bancos para a zona raw do MinIO
 # ------------------------------------------------------------------ testes
 validar:     ## confere que os 5 bancos batem com o gerador
 	$(DC) run --rm seeder python tests/validar.py
+
+# --------------------------------------------------------------- socorro
+consertar:   ## recria os containers quebrados (NAO apaga os dados)
+	@echo "Recriando os containers. Os volumes (seus dados) sao preservados."
+	$(DC) --profile tudo up -d --force-recreate
+	@bash scripts/esperar.sh
+	@echo
+	@echo "Se ainda houver problema, rode:  make diagnostico"
+
+diagnostico: ## junta tudo que o instrutor precisa para te ajudar
+	@bash scripts/diagnostico.sh

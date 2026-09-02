@@ -27,6 +27,7 @@ sys.path.insert(0, "/app")
 
 import clickhouse_connect
 
+from comum import conectar, parametros
 from gerador.liga_sudoers_gen import gerar_universo
 
 HOST = os.getenv("CLICKHOUSE_HOST", "clickhouse")
@@ -45,14 +46,15 @@ def aplicar_schema(cli, caminho: str) -> None:
 
 
 def main() -> int:
-    u = gerar_universo(
-        semente=int(os.getenv("SEMENTE", 42)),
-        n_pessoas=int(os.getenv("N_PESSOAS", 500)),
-        n_produtos=int(os.getenv("N_PRODUTOS", 200)),
-        n_pedidos=int(os.getenv("N_PEDIDOS", 5000)),
-    )
+    u = gerar_universo(**parametros())
 
-    cli = clickhouse_connect.get_client(host=HOST, username=USER, password=SENHA)
+    def _abrir():
+        c = clickhouse_connect.get_client(host=HOST, username=USER,
+                                          password=SENHA, connect_timeout=5)
+        c.query("SELECT 1")
+        return c
+
+    cli = conectar("ClickHouse", _abrir)
     print(f"conectado no ClickHouse {HOST} | versao {cli.server_version} | semente={u.semente}")
 
     aplicar_schema(cli, "/app/clickhouse/schema.sql")

@@ -99,20 +99,26 @@ docker compose run --rm seeder bash -c "
   diff -r /tmp/a /tmp/b && echo '✅ idêntico' || echo '❌ divergiu'"
 ```
 
-## Mudando o tamanho do universo
+## Mudando o tamanho do universo (OPCIONAL — pule se estiver começando)
 
-Edite o `.env` na raiz:
+> 🛑 **Você NÃO precisa fazer nada aqui.** Os valores abaixo já são os padrões
+> e já vêm funcionando. Esta seção existe só para quem, mais adiante, quiser
+> um universo maior ou menor. **Se você está seguindo a trilha pela primeira
+> vez, pule direto para a próxima seção.**
+
+Se um dia quiser mexer, edite o arquivo `.env` na raiz (o `make` cria ele
+sozinho na primeira execução, a partir do `.env.example`):
 
 ```bash
-SEMENTE=42
+SEMENTE=42        # troque para gerar um universo COMPLETAMENTE diferente
 N_PESSOAS=500
 N_PRODUTOS=200
 N_PEDIDOS=5000
 ```
 
-> ⚠️ **Mudou qualquer um desses valores? Repopule TODOS os bancos** com
-> `make seed`. Se você mudar a semente e repopular só um banco, os ids param
-> de bater entre eles e o `make validar` vai acusar.
+> ⚠️ **Se mudar qualquer um desses valores, repopule TODOS os bancos** com
+> `make seed`. Mudar a semente e repopular só um banco faz os ids pararem de
+> bater entre eles, e o `make validar` vai acusar falha.
 
 ## Um detalhe fino: o geohash
 

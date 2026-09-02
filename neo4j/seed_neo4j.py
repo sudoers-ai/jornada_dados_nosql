@@ -41,6 +41,7 @@ sys.path.insert(0, "/app")
 
 from neo4j import GraphDatabase
 
+from comum import conectar, parametros
 from gerador.liga_sudoers_gen import gerar_universo
 
 URI = os.getenv("NEO4J_URI", "bolt://neo4j:7687")
@@ -55,15 +56,14 @@ def em_lotes(seq, n=LOTE):
 
 
 def main() -> int:
-    u = gerar_universo(
-        semente=int(os.getenv("SEMENTE", 42)),
-        n_pessoas=int(os.getenv("N_PESSOAS", 500)),
-        n_produtos=int(os.getenv("N_PRODUTOS", 200)),
-        n_pedidos=int(os.getenv("N_PEDIDOS", 5000)),
-    )
+    u = gerar_universo(**parametros())
 
-    drv = GraphDatabase.driver(URI, auth=(USER, PASS))
-    drv.verify_connectivity()
+    def _abrir():
+        d = GraphDatabase.driver(URI, auth=(USER, PASS))
+        d.verify_connectivity()
+        return d
+
+    drv = conectar("Neo4j", _abrir)
     print(f"conectado no Neo4j {URI} | semente={u.semente}")
 
     with drv.session() as s:

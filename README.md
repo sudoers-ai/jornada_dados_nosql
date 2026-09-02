@@ -105,13 +105,30 @@ Em Cypher é um desenho de uma linha. Esse contraste é o coração do repositó
 
 ## ▶️ Começando em 5 minutos
 
+### Antes de tudo: confira o terreno
+
+```bash
+make verificar
+```
+
+Ele checa Docker, Compose v2, portas ocupadas e memória disponível — e diz,
+em português, o que fazer se algo estiver errado. **Vale os 5 segundos:** a
+maioria dos problemas de aula é porta ocupada ou memória baixa, e é bem mais
+fácil corrigir antes do que depois.
+
 ### Opção A — a stack inteira
 
 ```bash
 make tudo
 ```
 
-Isso sobe os cinco bancos, espera todos ficarem saudáveis e popula todos.
+Isso roda a verificação, sobe os cinco bancos, espera todos ficarem
+saudáveis e popula todos. Leva ~1 a 3 minutos (a primeira vez é mais
+demorada, porque baixa ~4 GB de imagens).
+
+> Você **não** precisa configurar nada antes. Sem arquivo `.env`, sem editar
+> porta, sem instalar driver. Se precisar mudar alguma coisa, aí sim existe o
+> `.env` — mas isso é opcional e vem depois.
 
 ### Opção B — um paradigma por vez (recomendado em máquina modesta)
 
@@ -140,6 +157,19 @@ docker compose run --rm seeder python mongodb/seed_mongo.py
 make status     # todos os containers e o estado de saúde
 make validar    # compara os 5 bancos com o gerador, item por item
 ```
+
+Esperado no `make validar`: **32 passaram, 0 falharam**.
+
+### Se algo der errado
+
+```bash
+make consertar     # recria os containers SEM apagar seus dados
+make diagnostico   # relatório completo para mandar ao instrutor
+```
+
+E consulte o [❓ FAQ de Aula](./docs/faq.md) — ele cobre porta ocupada,
+memória insuficiente, Compose v1, Cassandra lento e o erro mais traiçoeiro
+de todos (container que sobe "healthy" mas sem rede).
 
 O `make validar` é o seu **guia de evidências**: ele regera o universo em
 memória e confere cada contagem. Se algo divergir, ele diz exatamente o quê.
@@ -188,6 +218,7 @@ Material de apoio:
 * [⚖️ Matriz de decisão](./docs/comparativo.md) — qual banco escolher e por quê
 * [✅ Checklist do aluno](./docs/checklist.md) — para não se perder
 * [🔎 Validação por evidências](./docs/validacao_evidencia.md) — como provar que funcionou
+* [❓ FAQ de Aula](./docs/faq.md) — erros comuns e como resolver
 * [👩‍💻 Perfis e responsabilidades](./docs/perfis.md) — quem faz o quê no time
 
 ---
