@@ -13,6 +13,10 @@ SHELL := /bin/bash
 DC    := docker compose
 DCL   := docker compose -f docker-compose.yml -f docker-compose.lake.yml
 
+# Cria o .env na primeira vez. O compose ja tem valores padrao para tudo,
+# entao isto e conveniencia (para voce editar), nao obrigacao.
+$(shell [ -f .env ] || cp .env.example .env 2>/dev/null)
+
 .PHONY: ajuda tudo derruba limpar status logs ferramentas \
         documento chavevalor grafo widecolumn colunar viz bi bi-driver \
         seed-mongo seed-redis seed-neo4j seed-cassandra seed-clickhouse seed \
