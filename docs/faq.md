@@ -17,6 +17,7 @@
 
 | Comando | Quando usar |
 |---|---|
+| `make aula a=<nome>` | máquina modesta — sobe **só** o paradigma do dia |
 | `make verificar` | **antes** de subir — porta ocupada, pouca memória, Compose v1 |
 | `make consertar` | algo subiu errado — recria os containers **sem apagar seus dados** |
 | `make diagnostico` | travou e você não sabe por quê — gera um relatório para o instrutor |
@@ -116,12 +117,18 @@ make seed-cassandra
 pelo menos 6 GB e aplique.
 
 **Se não der para aumentar, suba um paradigma por vez** — é para isso que os
-profiles existem:
+profiles existem. O jeito mais simples:
+
+```bash
+make aula a=documento          # sobe só o MongoDB, popula e mostra o roteiro
+docker compose --profile documento down     # ao terminar a aula
+```
+
+Ou na mão:
 
 ```bash
 docker compose --profile documento up -d
 docker compose run --rm seeder python mongodb/seed_mongo.py
-# quando terminar essa aula:
 docker compose --profile documento down
 ```
 

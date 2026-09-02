@@ -19,7 +19,7 @@ $(shell [ -f .env ] || cp .env.example .env 2>/dev/null)
 
 .PHONY: ajuda tudo derruba limpar status logs ferramentas \
         documento chavevalor grafo widecolumn colunar viz bi bi-driver \
-        verificar consertar diagnostico \
+        verificar consertar diagnostico aula \
         seed-mongo seed-redis seed-neo4j seed-cassandra seed-clickhouse seed \
         q-mongo q-redis q-neo4j q-cassandra q-clickhouse \
         lake-conectar lake-desconectar lake-oltp lake-export validar
@@ -76,6 +76,9 @@ bi-driver:   ## baixa o driver ClickHouse do Metabase (nao vem na imagem)
 
 ferramentas: ## constroi a imagem com os drivers
 	$(DC) build seeder
+
+aula:        ## prepara UMA aula: sobe, popula e mostra o roteiro (make aula a=grafo)
+	@bash scripts/aula.sh $(a)
 
 verificar:   ## confere Docker, portas e recursos ANTES de subir
 	@bash scripts/verificar.sh

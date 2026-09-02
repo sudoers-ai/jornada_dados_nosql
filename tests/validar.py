@@ -16,10 +16,19 @@ Uso:
     make validar
     docker compose run --rm seeder python tests/validar.py
 """
+import logging
 import os
 import sys
 
 sys.path.insert(0, "/app")
+
+# Quando um banco esta fora do ar, os drivers cospem stack trace e mensagens
+# soltas no stderr ("Unexpected Http Driver Exception"). Aqui isso e ESPERADO
+# - o validador ja informa "indisponivel" de forma clara - entao calamos o
+# ruido para o aluno nao achar que quebrou alguma coisa.
+for _nome in ("clickhouse_connect", "cassandra", "neo4j", "pymongo", "urllib3"):
+    logging.getLogger(_nome).setLevel(logging.CRITICAL)
+logging.getLogger().setLevel(logging.CRITICAL)
 
 from gerador.liga_sudoers_gen import gerar_universo
 

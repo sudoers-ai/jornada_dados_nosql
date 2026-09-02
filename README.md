@@ -130,7 +130,20 @@ demorada, porque baixa ~4 GB de imagens).
 > porta, sem instalar driver. Se precisar mudar alguma coisa, aí sim existe o
 > `.env` — mas isso é opcional e vem depois.
 
-### Opção B — um paradigma por vez (recomendado em máquina modesta)
+### Opção B — uma aula por vez (recomendado em máquina modesta)
+
+```bash
+make aula a=grafo
+```
+
+Sobe **só** o profile daquele paradigma, popula, e imprime o roteiro da aula:
+o que ler, quais consultas rodar, qual interface abrir e como derrubar no
+final. Rode `make aula` sem argumento para ver as cinco opções.
+
+Isso existe para turma com máquina modesta: em vez de subir 6 GB para usar um
+banco só, o aluno sobe o do dia e derruba no fim.
+
+### Opção C — na mão, com os profiles
 
 É aqui que os **profiles** entram. Você sobe só o que vai usar na aula de hoje:
 
