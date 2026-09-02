@@ -1,0 +1,276 @@
+# ==========================================================================
+# Liga Sudoers - O lado NoSQL
+#
+# Cada banco vive num PROFILE. Voce NAO precisa subir tudo de uma vez.
+#
+#   docker compose --profile documento  up -d   # MongoDB
+#   docker compose --profile chavevalor up -d   # Redis
+#   docker compose --profile grafo      up -d   # Neo4j
+#   docker compose --profile widecolumn up -d   # Cassandra
+#   docker compose --profile colunar    up -d   # ClickHouse
+#   docker compose --profile viz        up -d   # Streamlit
+#   docker compose --profile bi         up -d   # Metabase
+#   docker compose --profile tudo       up -d   # a stack inteira
+# ==========================================================================
+
+services:
+
+  # ---------------------------------------------------------------- DOCUMENTO
+  mongodb:
+    image: mongo:7
+    container_name: sudoers_mongo
+    profiles: ["documento", "tudo"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${SUDOERS_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${SUDOERS_PASS}
+      MONGO_INITDB_DATABASE: liga_sudoers
+    # replica set de 1 no: obrigatorio para Change Streams (o "CDC" do Mongo).
+    # O entrypoint proprio gera o keyFile que o replica set exige quando ha auth.
+    entrypoint: ["/bin/bash", "/scripts/entrypoint-rs.sh"]
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/data/configdb/keyfile"]
+    ports:
+      - "${PORTA_MONGO}:27017"
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+      - ./mongodb/entrypoint-rs.sh:/scripts/entrypoint-rs.sh:ro
+      - ./mongodb:/scripts:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "-u", "${SUDOERS_USER}", "-p", "${SUDOERS_PASS}",
+             "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 15s
+    networks: [nosql_net]
+
+  # Sobe, inicia o replica set e morre. Aparece como "Exited (0)" - e o esperado.
+  mongo-rs-init:
+    image: mongo:7
+    container_name: sudoers_mongo_rs_init
+    profiles: ["documento", "tudo"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: on-failure
+    entrypoint:
+      - bash
+      - -c
+      - |
+        mongosh --quiet --host mongodb -u "$$MONGO_USER" -p "$$MONGO_PASS" --authenticationDatabase admin --eval '
+          try {
+            rs.status();
+            print("replica set ja iniciado");
+          } catch (e) {
+            printjson(rs.initiate({_id: "rs0", members: [{_id: 0, host: "mongodb:27017"}]}));
+          }
+        '
+    environment:
+      MONGO_USER: ${SUDOERS_USER}
+      MONGO_PASS: ${SUDOERS_PASS}
+    networks: [nosql_net]
+
+  mongo-express:
+    image: mongo-express:1.0.2
+    container_name: sudoers_mongo_ui
+    profiles: ["documento", "tudo"]
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://${SUDOERS_USER}:${SUDOERS_PASS}@mongodb:27017/?authSource=admin
+      ME_CONFIG_BASICAUTH_USERNAME: ${SUDOERS_USER}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${SUDOERS_PASS}
+    ports:
+      - "${PORTA_MONGO_UI}:8081"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [nosql_net]
+
+  # -------------------------------------------------------------- CHAVE-VALOR
+  redis:
+    image: redis:7-alpine
+    container_name: sudoers_redis
+    profiles: ["chavevalor", "tudo"]
+    # appendonly: durabilidade. Redis nao e "so cache" quando voce quer.
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${SUDOERS_PASS}"]
+    ports:
+      - "${PORTA_REDIS}:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis:/scripts:ro
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${SUDOERS_PASS}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [nosql_net]
+
+  # -------------------------------------------------------------------- GRAFO
+  neo4j:
+    image: neo4j:5-community
+    container_name: sudoers_neo4j
+    profiles: ["grafo", "tudo"]
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH}
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: ${NEO4J_HEAP}
+      NEO4J_server_memory_pagecache_size: 512m
+      NEO4J_apoc_export_file_enabled: "true"
+      NEO4J_apoc_import_file_enabled: "true"
+      NEO4J_PLUGINS: '["apoc"]'
+    ports:
+      - "${PORTA_NEO4J_HTTP}:7474"   # Neo4j Browser (dataviz nativa do grafo)
+      - "${PORTA_NEO4J_BOLT}:7687"   # protocolo Bolt (drivers)
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - ./neo4j:/scripts:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+    networks: [nosql_net]
+
+  # --------------------------------------------------------------- WIDE-COLUMN
+  cassandra:
+    image: cassandra:5.0
+    container_name: sudoers_cassandra
+    profiles: ["widecolumn", "tudo"]
+    environment:
+      CASSANDRA_CLUSTER_NAME: liga_sudoers
+      CASSANDRA_DC: datacenter1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      MAX_HEAP_SIZE: ${CASSANDRA_HEAP}
+      HEAP_NEWSIZE: 200M
+    ports:
+      - "${PORTA_CASSANDRA}:9042"
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+      - ./cassandra:/scripts:ro
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'DESCRIBE KEYSPACES' >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 15s
+      retries: 20
+      start_period: 60s
+    networks: [nosql_net]
+
+  # ------------------------------------------------------------------ COLUNAR
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: sudoers_clickhouse
+    profiles: ["colunar", "viz", "bi", "tudo"]
+    environment:
+      CLICKHOUSE_USER: ${SUDOERS_USER}
+      CLICKHOUSE_PASSWORD: ${SUDOERS_PASS}
+      CLICKHOUSE_DB: liga_sudoers
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "${PORTA_CLICKHOUSE_HTTP}:8123"     # HTTP + UI /play
+      - "${PORTA_CLICKHOUSE_NATIVA}:9000"   # nativo (9000 no host e do MinIO!)
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse:/scripts:ro
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    networks: [nosql_net]
+
+  # -------------------------------------------------------------- FERRAMENTAS
+  # Container com TODOS os drivers. Voce nao instala nada na sua maquina.
+  seeder:
+    build: ./ferramentas
+    image: liga_sudoers/seeder:1.0
+    container_name: sudoers_seeder
+    profiles: ["ferramentas"]
+    environment:
+      SEMENTE: ${SEMENTE}
+      N_PESSOAS: ${N_PESSOAS}
+      N_PRODUTOS: ${N_PRODUTOS}
+      N_PEDIDOS: ${N_PEDIDOS}
+      MONGO_URI: mongodb://${SUDOERS_USER}:${SUDOERS_PASS}@mongodb:27017/?authSource=admin&directConnection=true
+      REDIS_HOST: redis
+      REDIS_PASS: ${SUDOERS_PASS}
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASS: sudoers123
+      CASSANDRA_HOST: cassandra
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_USER: ${SUDOERS_USER}
+      CLICKHOUSE_PASS: ${SUDOERS_PASS}
+    volumes:
+      - ./:/app
+    working_dir: /app
+    networks: [nosql_net]
+
+  # ------------------------------------------------------------------- DATAVIZ
+  streamlit:
+    build: ./ferramentas
+    image: liga_sudoers/seeder:1.0
+    container_name: sudoers_viz
+    profiles: ["viz", "tudo"]
+    command: ["streamlit", "run", "/app/viz/painel.py",
+              "--server.port=8501", "--server.address=0.0.0.0",
+              "--browser.gatherUsageStats=false"]
+    environment:
+      MONGO_URI: mongodb://${SUDOERS_USER}:${SUDOERS_PASS}@mongodb:27017/?authSource=admin&directConnection=true
+      REDIS_HOST: redis
+      REDIS_PASS: ${SUDOERS_PASS}
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASS: sudoers123
+      CASSANDRA_HOST: cassandra
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_USER: ${SUDOERS_USER}
+      CLICKHOUSE_PASS: ${SUDOERS_PASS}
+    ports:
+      - "${PORTA_STREAMLIT}:8501"
+    volumes:
+      - ./:/app
+    networks: [nosql_net]
+
+  metabase:
+    image: metabase/metabase:v0.50.21
+    container_name: sudoers_metabase
+    profiles: ["bi", "tudo"]
+    environment:
+      MB_DB_TYPE: h2
+      MB_DB_FILE: /metabase-data/metabase.db
+      JAVA_TIMEZONE: America/Sao_Paulo
+    ports:
+      - "${PORTA_METABASE}:3000"
+    volumes:
+      - metabase_data:/metabase-data
+      # O driver do ClickHouse NAO vem na imagem do Metabase. Baixe com
+      # `make bi-driver` antes de subir este profile, ou o ClickHouse nao
+      # aparece na lista de bancos. O MongoDB, esse ja vem embutido.
+      - ./metabase/plugins:/plugins
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+    networks: [nosql_net]
+
+volumes:
+  mongo_data:
+  mongo_config:
+  redis_data:
+  neo4j_data:
+  neo4j_logs:
+  cassandra_data:
+  clickhouse_data:
+  metabase_data:
+
+networks:
+  nosql_net:
+    name: jornada_nosql_net
+    driver: bridge

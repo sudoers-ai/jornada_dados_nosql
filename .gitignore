@@ -1,0 +1,22 @@
+# saidas do gerador
+saida/
+*.parquet
+*.jsonl
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+
+# ambiente local (o .env.example e versionado)
+.env
+
+# editores
+.vscode/
+.idea/
+*.swp
+
+# plugins do Metabase: o driver e baixado com `make bi-driver`,
+# e o proprio Metabase escreve arquivos aqui em tempo de execucao
+metabase/plugins/*
+!metabase/plugins/.gitkeep

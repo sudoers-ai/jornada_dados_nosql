@@ -1,0 +1,30 @@
+# ==========================================================================
+# OVERLAY DE INTEGRACAO COM O REPO jornada_dados
+#
+# Este arquivo NAO substitui o docker-compose.yml: ele SOMA.
+# Use os dois juntos, sempre nesta ordem:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.lake.yml \
+#     run --rm seeder python integracao/carga_oltp.py
+#
+# O que ele faz: coloca o container `seeder` TAMBEM na rede do jornada_dados,
+# para que ele consiga falar com postgres-oltp, kafka e minio de la.
+#
+# PRE-REQUISITO: o jornada_dados precisa estar rodando (pelo menos os
+# servicos que voce vai usar). Se a rede nao existir, o compose avisa.
+#
+# Por que nao colocamos `external: true` direto no docker-compose.yml?
+# Porque ai este repo so subiria com o outro repo no ar - e a proposta e
+# que ele funcione sozinho tambem.
+# ==========================================================================
+
+services:
+  seeder:
+    networks:
+      - nosql_net
+      - lake_net
+
+networks:
+  lake_net:
+    external: true
+    name: jornada_dados_app_network

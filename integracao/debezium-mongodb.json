@@ -1,0 +1,27 @@
+{
+  "name": "mongodb-liga-sudoers",
+  "config": {
+    "connector.class": "io.debezium.connector.mongodb.MongoDbConnector",
+
+    "//": "O Debezium le o OPLOG do replica set. Por isso o mongodb deste repo",
+    "//_2": "sobe com --replSet rs0: sem replica set, nao existe CDC no Mongo.",
+    "mongodb.connection.string": "mongodb://sudoers:sudoers@sudoers_mongo:27017/?authSource=admin&replicaSet=rs0",
+    "topic.prefix": "nosql",
+
+    "database.include.list": "liga_sudoers",
+    "collection.include.list": "liga_sudoers.pedidos,liga_sudoers.produtos",
+
+    "//_3": "capture.mode=change_streams_update_full faz o evento trazer o",
+    "//_4": "documento INTEIRO depois do update, e nao so os campos alterados.",
+    "capture.mode": "change_streams_update_full",
+
+    "snapshot.mode": "initial",
+
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": "false",
+    "value.converter.schemas.enable": "false",
+
+    "tasks.max": "1"
+  }
+}

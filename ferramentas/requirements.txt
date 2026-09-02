@@ -1,0 +1,17 @@
+# Drivers de cada paradigma
+pymongo==4.10.1            # documento
+redis==5.2.1               # chave-valor
+neo4j==5.27.0              # grafo
+cassandra-driver==3.29.2   # wide-column
+clickhouse-connect==0.8.11 # colunar
+
+# Geracao e integracao
+Faker==33.1.0
+psycopg2-binary==2.9.10    # carga no OLTP do repo jornada_dados
+boto3==1.35.90             # export para o MinIO (Data Lake)
+pyarrow==18.1.0            # escrita em Parquet
+
+# Dataviz
+streamlit==1.41.1
+pandas==2.2.3
+plotly==5.24.1
